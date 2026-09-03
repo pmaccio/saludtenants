@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salud de Clientes · Flokzu</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#faf9fd;
+  --panel:#ffffff;
+  --panel2:#f4f1fb;
+  --border:#e4defa;
+  --text:#2a2340;
+  --muted:#847d9c;
+  --bien:#1f9d68;
+  --bien-bg:rgba(31,157,104,0.10);
+  --cuidado:#c07f0e;
+  --cuidado-bg:rgba(192,127,14,0.12);
+  --mal:#d63c72;
+  --mal-bg:rgba(214,60,114,0.10);
+  --accent:#7c4dff;
+  --accent2:#5636c9;
+  --shadow:0 1px 2px rgba(90,60,180,0.05), 0 8px 24px rgba(90,60,180,0.06);
+  --font-display: 'Space Grotesk', 'Segoe UI', Arial, sans-serif;
+  --font-body: 'Inter', 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:radial-gradient(circle at 12% 0%, #f1ecfc 0%, var(--bg) 45%);
+  color:var(--text);
+  font-family:var(--font-body);
+  min-height:100vh;
+  padding-bottom:60px;
+}
+@font-face{font-family:'Space Grotesk';src:local('Arial');}
+
+header.top{
+  padding:28px 36px 20px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:16px;
+  border-bottom:1px solid var(--border);
+  background:#ffffff;
+}
+.brand-eyebrow{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:0.16em;
+  text-transform:uppercase;
+  color:var(--accent2);
+  margin:0 0 6px;
+}
+h1{
+  font-family:var(--font-display);
+  font-size:28px;
+  margin:0;
+  font-weight:700;
+  letter-spacing:-0.01em;
+}
+.top-meta{
+  text-align:right;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.6;
+}
+.top-meta b{color:var(--text);}
+
+.container{padding:28px 36px;max-width:1500px;margin:0 auto;}
+
+.kpi-row{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  margin-bottom:28px;
+}
+.kpi{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:18px 20px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.kpi::before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:4px;
+}
+.kpi.total::before{background:var(--accent);}
+.kpi.bien::before{background:var(--bien);}
+.kpi.cuidado::before{background:var(--cuidado);}
+.kpi.mal::before{background:var(--mal);}
+.kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+.kpi .value{font-family:var(--font-display);font-size:34px;font-weight:700;}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.kpi.bien .value{color:var(--bien);}
+.kpi.cuidado .value{color:var(--cuidado);}
+.kpi.mal .value{color:var(--mal);}
+
+.charts-row{
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:16px;
+  margin-bottom:28px;
+}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:20px;
+  box-shadow:var(--shadow);
+}
+.panel h3{
+  margin:0 0 4px;
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:600;
+}
+.panel .hint{color:var(--muted);font-size:12px;margin:0 0 14px;}
+.chart-wrap{position:relative;height:220px;}
+
+.reason-legend{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-top:14px;
+}
+.reason-chip{
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 12px;
+  cursor:pointer;
+  transition:border-color .15s, transform .1s;
+}
+.reason-chip:hover{border-color:var(--accent2);}
+.reason-chip.active{border-color:var(--accent2);background:rgba(124,77,255,0.08);}
+.reason-chip .rc-count{font-family:var(--font-display);font-size:20px;font-weight:700;}
+.reason-chip .rc-label{font-size:11px;color:var(--muted);margin-top:2px;}
+
+.toolbar{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+  position:relative;
+}
+.toolbar input[type=text]{
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:9px 12px;
+  color:var(--text);
+  font-size:13px;
+  width:220px;
+  font-family:var(--font-body);
+}
+.seg{
+  display:flex;
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  overflow:hidden;
+}
+.seg button{
+  background:transparent;
+  border:none;
+  color:var(--muted);
+  padding:9px 14px;
+  font-size:13px;
+  cursor:pointer;
+  font-family:var(--font-body);
+  border-right:1px solid var(--border);
+}
+.seg button:last-child{border-right:none;}
+.seg button.active{background:var(--accent);color:#fff;}
+.spacer{flex:1;}
+.btn{
+  background:var(--panel2);
+  border:1px solid var(--border);
+  color:var(--text);
+  padding:9px 14px;
+  border-radius:8px;
+  font-size:13px;
+  cursor:pointer;
+  font-family:var(--font-body);
+}
+.btn:hover{border-color:var(--accent2);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.primary:hover{opacity:.9;}
+.count-tag{color:var(--muted);font-size:12px;}
+
+.col-picker-wrap{position:relative;}
+.col-picker-panel{
+  display:none;
+  position:absolute;
+  top:calc(100% + 6px);
+  right:0;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:0 12px 32px rgba(90,60,180,0.16);
+  padding:12px;
+  min-width:230px;
+  z-index:40;
+}
+.col-picker-panel.open{display:block;}
+.col-picker-panel .cp-title{font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:8px;}
+.col-picker-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 4px;font-size:13px;cursor:pointer;border-radius:6px;
+}
+.col-picker-item:hover{background:var(--panel2);}
+.col-picker-item input{accent-color:var(--accent);cursor:pointer;}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{
+  text-align:left;
+  padding:10px 12px;
+  color:var(--muted);
+  font-weight:600;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  white-space:nowrap;
+}
+thead th:hover{color:var(--text);}
+tbody td{
+  padding:10px 12px;
+  border-bottom:1px solid rgba(228,222,250,0.7);
+  vertical-align:middle;
+  white-space:nowrap;
+}
+td.motivos-cell{
+  white-space:normal;
+  max-width:260px;
+  min-width:180px;
+}
+td.seguimiento-cell{
+  white-space:nowrap;
+  vertical-align:middle;
+}
+tbody tr:hover{background:rgba(124,77,255,0.05);}
+.tenant-name{font-weight:600;}
+.badge{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:20px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.02em;
+}
+.badge.Bien{background:var(--bien-bg);color:var(--bien);}
+.badge.Cuidado{background:var(--cuidado-bg);color:var(--cuidado);}
+.badge.Mal{background:var(--mal-bg);color:var(--mal);}
+.tag{
+  display:inline-block;
+  background:var(--panel2);
+  border:1px solid var(--border);
+  color:var(--muted);
+  font-size:10px;
+  padding:2px 8px;
+  border-radius:6px;
+  margin:1px 3px 1px 0;
+  white-space:normal;
+}
+.var-pos{color:var(--bien);}
+.var-neg{color:var(--mal);}
+.var-na{color:var(--muted);}
+.mono{font-family:var(--font-mono);font-size:12px;}
+.contact-btn{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;
+}
+.contact-btn.done{border-color:var(--bien);color:var(--bien);}
+.contact-btn:hover{border-color:var(--accent2);color:var(--text);}
+
+.table-scroll{max-height:640px;overflow-y:auto;overflow-x:auto;}
+
+.modal-overlay{
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(42,35,64,0.35);
+  backdrop-filter:blur(2px);
+  z-index:50;
+  align-items:center;justify-content:center;
+  padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:14px;
+  max-width:560px;width:100%;
+  padding:24px;
+  max-height:85vh;
+  overflow-y:auto;
+  box-shadow:0 20px 60px rgba(90,60,180,0.18);
+  position:relative;
+}
+.modal h3{font-family:var(--font-display);margin:0 0 4px;font-size:18px;}
+.modal .modal-sub{color:var(--muted);font-size:13px;margin-bottom:16px;}
+.modal textarea{
+  width:100%;min-height:160px;
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);border-radius:8px;padding:12px;
+  font-family:var(--font-body);font-size:13px;line-height:1.6;
+  resize:vertical;
+}
+.modal-actions{display:flex;gap:10px;margin-top:14px;justify-content:flex-end;}
+.modal-close{
+  position:absolute;top:18px;right:20px;
+  background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;
+}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.detail-item{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.detail-item .di-label{font-size:10px;color:var(--muted);text-transform:uppercase;}
+.detail-item .di-value{font-family:var(--font-mono);font-size:15px;margin-top:2px;}
+
+footer{text-align:center;color:var(--muted);font-size:12px;padding:30px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <p class="brand-eyebrow">Client Solutions · Flokzu</p>
+    <h1>Salud de Clientes</h1>
+  </div>
+  <div class="top-meta">
+    <div><b id="metaTotal">–</b> tenants analizados</div>
+    <div>Período: <b>jul – ago 2026</b></div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="kpi-row">
+    <div class="kpi total">
+      <div class="label">Total clientes</div>
+      <div class="value" id="kpiTotal">–</div>
+      <div class="sub">en el export</div>
+    </div>
+    <div class="kpi bien">
+      <div class="label">Bien</div>
+      <div class="value" id="kpiBien">–</div>
+      <div class="sub" id="kpiBienPct">–</div>
+    </div>
+    <div class="kpi cuidado">
+      <div class="label">Cuidado</div>
+      <div class="value" id="kpiCuidado">–</div>
+      <div class="sub" id="kpiCuidadoPct">–</div>
+    </div>
+    <div class="kpi mal">
+      <div class="label">Mal</div>
+      <div class="value" id="kpiMal">–</div>
+      <div class="sub" id="kpiMalPct">–</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="panel">
+      <h3>Distribución de salud</h3>
+      <p class="hint">Sobre el total de clientes</p>
+      <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3>¿Por qué están "Mal"? — clic para filtrar la tabla</h3>
+      <p class="hint">Reglas: Mal = caída de instancias &gt;30%, caída de usuarios &gt;30%, o &gt;5 días hábiles sin login. Cuidado = caída de 10–30% en instancias o usuarios. Un cliente puede tener más de un motivo.</p>
+      <div class="reason-legend" id="reasonLegend"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <div class="seg" id="segSalud">
+        <button data-v="Todos" class="active">Todos</button>
+        <button data-v="Mal">Mal</button>
+        <button data-v="Cuidado">Cuidado</button>
+        <button data-v="Bien">Bien</button>
+      </div>
+      <input type="text" id="searchBox" placeholder="Buscar tenant…">
+      <div class="spacer"></div>
+      <span class="count-tag" id="rowCount"></span>
+      <div class="col-picker-wrap">
+        <button class="btn" id="colPickerBtn">Columnas ⚙</button>
+        <div class="col-picker-panel" id="colPickerPanel">
+          <div class="cp-title">Mostrar columnas</div>
+          <div id="colPickerList"></div>
+        </div>
+      </div>
+      <button class="btn" id="exportBtn">Exportar CSV</button>
+      <button class="btn primary" id="pendingBtn">Ver pendientes de seguimiento</button>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>Dashboard generado a partir del export de salud de clientes · el estado de seguimiento y las columnas visibles se guardan en tu navegador</footer>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">&times;</button>
+    <h3 id="modalTitle">Tenant</h3>
+    <p class="modal-sub" id="modalSub"></p>
+    <div class="detail-grid" id="modalDetail"></div>
+    <h3 style="font-size:14px;margin-top:0;">Mensaje de seguimiento sugerido</h3>
+    <textarea id="modalMsg"></textarea>
+    <div class="modal-actions">
+      <button class="btn" id="copyMsgBtn">Copiar mensaje</button>
+      <button class="btn primary" id="markDoneBtn">Marcar como contactado</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const RAW = [{"t": "bancocoinags.a.", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2025-06-11", "dh": 321, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "bycic", "ii": 89.0, "if_": 54.0, "vi": -0.3933, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "catenus", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2024-11-08", "dh": 474, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "crowe.uy", "ii": 112.0, "if_": 137.0, "vi": 0.2232, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "dataphonecr", "ii": 4016.0, "if_": 3636.0, "vi": -0.0946, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "engagetech", "ii": 438.0, "if_": 507.0, "vi": 0.1575, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-28", "dh": 4, "s": "Mal", "r": ["estable"]}, {"t": "fertilab", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2023-08-18", "dh": 794, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "globalhas", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-06-01", "dh": 68, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "medisur", "ii": 0.0, "if_": 127.0, "vi": null, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "riskcontrolteam", "ii": 173.0, "if_": 188.0, "vi": 0.0867, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "super99", "ii": 13.0, "if_": 17.0, "vi": 0.3077, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-26", "dh": 6, "s": "Mal", "r": ["login_atrasado"]}, {"t": "tripwip", "ii": 82.0, "if_": 120.0, "vi": 0.4634, "ui": 5.0, "uf": 5.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "absnamibia", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2025-03-02", "dh": 393, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "axeda", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2024-08-09", "dh": 539, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "calidadcarrau", "ii": 1.0, "if_": 1.0, "vi": 0.0, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-12", "dh": 16, "s": "Mal", "r": ["login_atrasado"]}, {"t": "gestionesterritorialess.a.s.", "ii": 5.0, "if_": 0.0, "vi": -1.0, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-29", "dh": 3, "s": "Mal", "r": ["sin_actividad_instancias"]}, {"t": "instituto-slanh", "ii": 0.0, "if_": 21.0, "vi": null, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-27", "dh": 5, "s": "Bien", "r": ["estable"]}, {"t": "ipsmexico", "ii": 40.0, "if_": 57.0, "vi": 0.425, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "movie", "ii": 50.0, "if_": 36.0, "vi": -0.28, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "mtdsas", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-25", "dh": 7, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "siconestrategies", "ii": 8.0, "if_": 10.0, "vi": 0.25, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "sindicatodosauxiliaresdead", "ii": 133.0, "if_": 157.0, "vi": 0.1805, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "slcprueba", "ii": 6.0, "if_": 0.0, "vi": -1.0, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-06-17", "dh": 56, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "uninverc", "ii": 126.0, "if_": 149.0, "vi": 0.1825, "ui": 6.0, "uf": 6.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "btpaustralia", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["sin_actividad_instancias"]}, {"t": "bzpay_ops", "ii": 224.0, "if_": 223.0, "vi": -0.0045, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "construtivo", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2025-11-27", "dh": 200, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "fdeveaux", "ii": 22.0, "if_": 18.0, "vi": -0.1818, "ui": 7.0, "uf": 6.0, "vu": -0.1429, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada", "caida_usuarios_moderada"]}, {"t": "futurformmps", "ii": 33.0, "if_": 26.0, "vi": -0.2121, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-26", "dh": 6, "s": "Mal", "r": ["caida_instancias_moderada", "login_atrasado"]}, {"t": "ksivision", "ii": 4.0, "if_": 3.0, "vi": -0.25, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-20", "dh": 10, "s": "Mal", "r": ["caida_instancias_moderada", "login_atrasado"]}, {"t": "lagom", "ii": 128.0, "if_": 145.0, "vi": 0.1328, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "origisprueba", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-04-01", "dh": 111, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "painmedsas", "ii": 53.0, "if_": 9.0, "vi": -0.8302, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "papajohns", "ii": 3367.0, "if_": 3786.0, "vi": 0.1244, "ui": 7.0, "uf": 10.0, "vu": 0.4286, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "pgg", "ii": 1.0, "if_": 1.0, "vi": 0.0, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-28", "dh": 4, "s": "Mal", "r": ["estable"]}, {"t": "vetlabdiagnosticsa", "ii": 66.0, "if_": 89.0, "vi": 0.3485, "ui": 7.0, "uf": 7.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "aluminiosdeluruguays.a.", "ii": 1.0, "if_": 18.0, "vi": 17.0, "ui": 8.0, "uf": 10.0, "vu": 0.25, "ll": "2026-08-28", "dh": 4, "s": "Mal", "r": ["estable"]}, {"t": "cpeippfd", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 8.0, "uf": 8.0, "vu": 0.0, "ll": "2026-08-28", "dh": 4, "s": "Mal", "r": ["sin_actividad_instancias"]}, {"t": "fabrasa", "ii": 526.0, "if_": 556.0, "vi": 0.057, "ui": 8.0, "uf": 8.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "gsiguatemala", "ii": 26.0, "if_": 3.0, "vi": -0.8846, "ui": 8.0, "uf": 8.0, "vu": 0.0, "ll": "2026-08-21", "dh": 9, "s": "Mal", "r": ["caida_instancias_fuerte", "login_atrasado"]}, {"t": "isatest", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 8.0, "uf": 8.0, "vu": 0.0, "ll": "2026-06-23", "dh": 52, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "kentakai.com", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 8.0, "uf": 8.0, "vu": 0.0, "ll": "2025-09-11", "dh": 255, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "odl", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 8.0, "uf": 8.0, "vu": 0.0, "ll": "2025-09-26", "dh": 244, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "portoservicios", "ii": 6.0, "if_": 7.0, "vi": 0.1667, "ui": 8.0, "uf": 8.0, "vu": 0.0, "ll": "2026-08-26", "dh": 6, "s": "Mal", "r": ["login_atrasado"]}, {"t": "agroambientaleshr", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 9.0, "uf": 9.0, "vu": 0.0, "ll": "2026-07-21", "dh": 32, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "cooperativaunimos", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 9.0, "uf": 9.0, "vu": 0.0, "ll": "2025-08-28", "dh": 265, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "fiordoaustral", "ii": 641.0, "if_": 529.0, "vi": -0.1747, "ui": 9.0, "uf": 10.0, "vu": 0.1111, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "renergeia", "ii": 508.0, "if_": 481.0, "vi": -0.0531, "ui": 9.0, "uf": 9.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "scoffable", "ii": 49.0, "if_": 61.0, "vi": 0.2449, "ui": 9.0, "uf": 9.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "slctrade", "ii": 27.0, "if_": 27.0, "vi": 0.0, "ui": 9.0, "uf": 9.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "acerta", "ii": 1.0, "if_": 1.0, "vi": 0.0, "ui": 10.0, "uf": 10.0, "vu": 0.0, "ll": "2026-08-27", "dh": 5, "s": "Bien", "r": ["estable"]}, {"t": "comitedevigilancia", "ii": 23.0, "if_": 25.0, "vi": 0.087, "ui": 10.0, "uf": 10.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "prolesa", "ii": 87.0, "if_": 93.0, "vi": 0.069, "ui": 10.0, "uf": 10.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "sanatoriodeloeste", "ii": 59.0, "if_": 45.0, "vi": -0.2373, "ui": 10.0, "uf": 10.0, "vu": 0.0, "ll": "2026-08-27", "dh": 5, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "alianzas", "ii": 23.0, "if_": 46.0, "vi": 1.0, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2026-08-06", "dh": 20, "s": "Mal", "r": ["login_atrasado"]}, {"t": "canal10", "ii": 30.0, "if_": 24.0, "vi": -0.2, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "chiquimulja", "ii": 26.0, "if_": 59.0, "vi": 1.2692, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "delcampo_solucionesagricolas", "ii": 201.0, "if_": 211.0, "vi": 0.0498, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "isapreconsalud", "ii": 350.0, "if_": 642.0, "vi": 0.8343, "ui": 11.0, "uf": 15.0, "vu": 0.3636, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "konsultiva", "ii": 2.0, "if_": 2.0, "vi": 0.0, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2025-02-09", "dh": 408, "s": "Mal", "r": ["login_atrasado"]}, {"t": "multiriesgos", "ii": 777.0, "if_": 833.0, "vi": 0.0721, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "shoprite", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2025-09-25", "dh": 245, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "watr", "ii": 24.0, "if_": 40.0, "vi": 0.6667, "ui": 11.0, "uf": 11.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "ascendcertification", "ii": 3.0, "if_": 36.0, "vi": 11.0, "ui": 12.0, "uf": 14.0, "vu": 0.1667, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "certificaciones", "ii": 54.0, "if_": 19.0, "vi": -0.6481, "ui": 12.0, "uf": 11.0, "vu": -0.0833, "ll": "2026-08-28", "dh": 4, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "ffx", "ii": 85.0, "if_": 64.0, "vi": -0.2471, "ui": 12.0, "uf": 12.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "inmove", "ii": 29.0, "if_": 44.0, "vi": 0.5172, "ui": 12.0, "uf": 12.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "lactosan", "ii": 279.0, "if_": 296.0, "vi": 0.0609, "ui": 12.0, "uf": 10.0, "vu": -0.1667, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["caida_usuarios_moderada"]}, {"t": "udla23", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 12.0, "uf": 12.0, "vu": 0.0, "ll": "2025-01-24", "dh": 419, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "caceresyferro", "ii": 41.0, "if_": 33.0, "vi": -0.1951, "ui": 13.0, "uf": 8.0, "vu": -0.3846, "ll": "2026-09-01", "dh": 2, "s": "Mal", "r": ["caida_instancias_moderada", "caida_usuarios_fuerte"]}, {"t": "gamc", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 13.0, "uf": 13.0, "vu": 0.0, "ll": "2026-05-26", "dh": 72, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "moldesruibal", "ii": 185.0, "if_": 217.0, "vi": 0.173, "ui": 13.0, "uf": 13.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "p.h.tocpanama", "ii": 0.0, "if_": 181.0, "vi": null, "ui": 13.0, "uf": 15.0, "vu": 0.1538, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "workit", "ii": 205.0, "if_": 243.0, "vi": 0.1854, "ui": 13.0, "uf": 13.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "americanservices", "ii": 4139.0, "if_": 4315.0, "vi": 0.0425, "ui": 14.0, "uf": 14.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "dentalia_flokzu", "ii": 39.0, "if_": 41.0, "vi": 0.0513, "ui": 14.0, "uf": 14.0, "vu": 0.0, "ll": "2026-08-25", "dh": 7, "s": "Mal", "r": ["login_atrasado"]}, {"t": "hmccapital", "ii": 12.0, "if_": 12.0, "vi": 0.0, "ui": 14.0, "uf": 15.0, "vu": 0.0714, "ll": "2026-08-26", "dh": 6, "s": "Mal", "r": ["login_atrasado"]}, {"t": "hts", "ii": 1982.0, "if_": 2387.0, "vi": 0.2043, "ui": 14.0, "uf": 14.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "smartway", "ii": 9.0, "if_": 50.0, "vi": 4.5556, "ui": 14.0, "uf": 14.0, "vu": 0.0, "ll": "2026-07-29", "dh": 26, "s": "Mal", "r": ["login_atrasado"]}, {"t": "asconorltda", "ii": 172.0, "if_": 130.0, "vi": -0.2442, "ui": 15.0, "uf": 15.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["caida_instancias_moderada"]}, {"t": "multicontainer", "ii": 138.0, "if_": 98.0, "vi": -0.2899, "ui": 15.0, "uf": 15.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "viu", "ii": 60.0, "if_": 62.0, "vi": 0.0333, "ui": 15.0, "uf": 15.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "clinicadelosremedios", "ii": 213.0, "if_": 241.0, "vi": 0.1315, "ui": 16.0, "uf": 16.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "ey_uruguay", "ii": 106.0, "if_": 115.0, "vi": 0.0849, "ui": 16.0, "uf": 16.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "olz", "ii": 0.0, "if_": 2.0, "vi": null, "ui": 16.0, "uf": 16.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "quimicacenit", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 16.0, "uf": 16.0, "vu": 0.0, "ll": "2025-01-11", "dh": 428, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "americancourier", "ii": 2542.0, "if_": 2013.0, "vi": -0.2081, "ui": 17.0, "uf": 6.0, "vu": -0.6471, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_moderada", "caida_usuarios_fuerte"]}, {"t": "citytech", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 17.0, "uf": 17.0, "vu": 0.0, "ll": "2026-08-07", "dh": 19, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "comsatel", "ii": 217.0, "if_": 231.0, "vi": 0.0645, "ui": 17.0, "uf": 17.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "invoicelaguna", "ii": 33.0, "if_": 23.0, "vi": -0.303, "ui": 17.0, "uf": 17.0, "vu": 0.0, "ll": "2026-08-29", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "nestrixcr", "ii": 2241.0, "if_": 2269.0, "vi": 0.0125, "ui": 17.0, "uf": 17.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "inma", "ii": 2274.0, "if_": 2451.0, "vi": 0.0778, "ui": 18.0, "uf": 18.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "orgauditores", "ii": 285.0, "if_": 376.0, "vi": 0.3193, "ui": 18.0, "uf": 18.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "utel-global", "ii": 19.0, "if_": 21.0, "vi": 0.1053, "ui": 18.0, "uf": 18.0, "vu": 0.0, "ll": "2026-08-29", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "estudioaleman", "ii": 246.0, "if_": 117.0, "vi": -0.5244, "ui": 19.0, "uf": 19.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "mutualidadcfia", "ii": 88.0, "if_": 373.0, "vi": 3.2386, "ui": 19.0, "uf": 21.0, "vu": 0.1053, "ll": "2026-08-28", "dh": 4, "s": "Mal", "r": ["estable"]}, {"t": "artico", "ii": 722.0, "if_": 735.0, "vi": 0.018, "ui": 20.0, "uf": 22.0, "vu": 0.1, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "automotoradeoccidente", "ii": 492.0, "if_": 592.0, "vi": 0.2033, "ui": 20.0, "uf": 20.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "creatorisi", "ii": 31.0, "if_": 29.0, "vi": -0.0645, "ui": 20.0, "uf": 21.0, "vu": 0.05, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "stl", "ii": 215.0, "if_": 266.0, "vi": 0.2372, "ui": 20.0, "uf": 21.0, "vu": 0.05, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "skydev", "ii": 226.0, "if_": 228.0, "vi": 0.0088, "ui": 21.0, "uf": 21.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "sbase", "ii": 100.0, "if_": 56.0, "vi": -0.44, "ui": 22.0, "uf": 24.0, "vu": 0.0909, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "colliersnexus", "ii": 68.0, "if_": 69.0, "vi": 0.0147, "ui": 23.0, "uf": 20.0, "vu": -0.1304, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_usuarios_moderada"]}, {"t": "conaprole2", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 23.0, "uf": 23.0, "vu": 0.0, "ll": "2026-08-17", "dh": 13, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "aguadapark", "ii": 272.0, "if_": 268.0, "vi": -0.0147, "ui": 24.0, "uf": 24.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "casarone", "ii": 11.0, "if_": 1.0, "vi": -0.9091, "ui": 24.0, "uf": 24.0, "vu": 0.0, "ll": "2026-08-27", "dh": 5, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "privalbank", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 24.0, "uf": 24.0, "vu": 0.0, "ll": "2026-08-20", "dh": 10, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "udeohiggins", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 24.0, "uf": 24.0, "vu": 0.0, "ll": "2026-05-18", "dh": 78, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "asegsur", "ii": 13.0, "if_": 6.0, "vi": -0.5385, "ui": 25.0, "uf": 24.0, "vu": -0.04, "ll": "2026-08-25", "dh": 7, "s": "Mal", "r": ["caida_instancias_fuerte", "login_atrasado"]}, {"t": "austinsoftware", "ii": 24.0, "if_": 0.0, "vi": -1.0, "ui": 25.0, "uf": 25.0, "vu": 0.0, "ll": "2026-08-24", "dh": 8, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "plateriaramirez", "ii": 1054.0, "if_": 1117.0, "vi": 0.0598, "ui": 26.0, "uf": 26.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "htf", "ii": 216.0, "if_": 250.0, "vi": 0.1574, "ui": 27.0, "uf": 29.0, "vu": 0.0741, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "hmcagf", "ii": 426.0, "if_": 408.0, "vi": -0.0423, "ui": 28.0, "uf": 27.0, "vu": -0.0357, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "soportesumafinanciera", "ii": 809.0, "if_": 955.0, "vi": 0.1805, "ui": 28.0, "uf": 26.0, "vu": -0.0714, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "andestourssas", "ii": 535.0, "if_": 670.0, "vi": 0.2523, "ui": 29.0, "uf": 29.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "diplomadop", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 29.0, "uf": 29.0, "vu": 0.0, "ll": "2026-04-28", "dh": 92, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "pasamar", "ii": 409.0, "if_": 651.0, "vi": 0.5917, "ui": 29.0, "uf": 29.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "quijanoasociados", "ii": 209.0, "if_": 203.0, "vi": -0.0287, "ui": 29.0, "uf": 29.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "adviceconsulting", "ii": 568.0, "if_": 545.0, "vi": -0.0405, "ui": 30.0, "uf": 30.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "imegaventus", "ii": 382.0, "if_": 330.0, "vi": -0.1361, "ui": 30.0, "uf": 29.0, "vu": -0.0333, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["caida_instancias_moderada"]}, {"t": "univ_europea", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 30.0, "uf": 30.0, "vu": 0.0, "ll": "2026-07-15", "dh": 36, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "gore-coquimbo", "ii": 128.0, "if_": 147.0, "vi": 0.1484, "ui": 31.0, "uf": 31.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "principa", "ii": 12.0, "if_": 7.0, "vi": -0.4167, "ui": 31.0, "uf": 32.0, "vu": 0.0323, "ll": "2026-08-28", "dh": 4, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "todomarchl", "ii": 1278.0, "if_": 1595.0, "vi": 0.248, "ui": 31.0, "uf": 32.0, "vu": 0.0323, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "colliersinternationalcolombiasa", "ii": 451.0, "if_": 380.0, "vi": -0.1574, "ui": 32.0, "uf": 29.0, "vu": -0.0938, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "ciemtelcom", "ii": 373.0, "if_": 352.0, "vi": -0.0563, "ui": 33.0, "uf": 33.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "copac", "ii": 305.0, "if_": 222.0, "vi": -0.2721, "ui": 33.0, "uf": 33.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "esmt", "ii": 24.0, "if_": 192.0, "vi": 7.0, "ui": 33.0, "uf": 33.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "mdoscapital", "ii": 862.0, "if_": 224.0, "vi": -0.7401, "ui": 34.0, "uf": 34.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "gaf", "ii": 22.0, "if_": 44.0, "vi": 1.0, "ui": 35.0, "uf": 27.0, "vu": -0.2286, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_usuarios_moderada"]}, {"t": "ujave", "ii": 20.0, "if_": 0.0, "vi": -1.0, "ui": 35.0, "uf": 35.0, "vu": 0.0, "ll": "2026-06-10", "dh": 61, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "surauruguay", "ii": 940.0, "if_": 991.0, "vi": 0.0543, "ui": 36.0, "uf": 37.0, "vu": 0.0278, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "opendevpro", "ii": 146.0, "if_": 127.0, "vi": -0.1301, "ui": 37.0, "uf": 36.0, "vu": -0.027, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "veterquimicachile", "ii": 214.0, "if_": 179.0, "vi": -0.1636, "ui": 37.0, "uf": 38.0, "vu": 0.027, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_instancias_moderada"]}, {"t": "bpminmel", "ii": 0.0, "if_": 0.0, "vi": null, "ui": 40.0, "uf": 40.0, "vu": 0.0, "ll": "2026-01-05", "dh": 173, "s": "Mal", "r": ["sin_actividad_instancias", "login_atrasado"]}, {"t": "umontevideo", "ii": 197.0, "if_": 284.0, "vi": 0.4416, "ui": 42.0, "uf": 40.0, "vu": -0.0476, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "hyperclear.tech", "ii": 2.0, "if_": 2.0, "vi": 0.0, "ui": 43.0, "uf": 45.0, "vu": 0.0465, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "bfernandez", "ii": 107.0, "if_": 310.0, "vi": 1.8972, "ui": 44.0, "uf": 50.0, "vu": 0.1364, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "smilepill", "ii": 1196.0, "if_": 1155.0, "vi": -0.0343, "ui": 45.0, "uf": 45.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "pimcapitalfundservices", "ii": 1526.0, "if_": 1600.0, "vi": 0.0485, "ui": 49.0, "uf": 49.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "archct", "ii": 457.0, "if_": 427.0, "vi": -0.0656, "ui": 50.0, "uf": 50.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "elvendingsa", "ii": 52.0, "if_": 55.0, "vi": 0.0577, "ui": 50.0, "uf": 45.0, "vu": -0.1, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["caida_usuarios_moderada"]}, {"t": "interagrovialsa", "ii": 211.0, "if_": 230.0, "vi": 0.09, "ui": 50.0, "uf": 52.0, "vu": 0.04, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "sylvania", "ii": 598.0, "if_": 596.0, "vi": -0.0033, "ui": 55.0, "uf": 55.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "teleflex-vi", "ii": 12.0, "if_": 13.0, "vi": 0.0833, "ui": 55.0, "uf": 56.0, "vu": 0.0182, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "workbix", "ii": 2062.0, "if_": 3187.0, "vi": 0.5456, "ui": 58.0, "uf": 62.0, "vu": 0.069, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "origis", "ii": 44.0, "if_": 7.0, "vi": -0.8409, "ui": 59.0, "uf": 9.0, "vu": -0.8475, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte", "caida_usuarios_fuerte"]}, {"t": "itpatagonia", "ii": 265.0, "if_": 254.0, "vi": -0.0415, "ui": 63.0, "uf": 66.0, "vu": 0.0476, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "dbs", "ii": 57.0, "if_": 85.0, "vi": 0.4912, "ui": 64.0, "uf": 52.0, "vu": -0.1875, "ll": "2026-08-31", "dh": 3, "s": "Cuidado", "r": ["caida_usuarios_moderada"]}, {"t": "colliersinternationalpf", "ii": 735.0, "if_": 778.0, "vi": 0.0585, "ui": 65.0, "uf": 61.0, "vu": -0.0615, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "comessgroup", "ii": 18.0, "if_": 28.0, "vi": 0.5556, "ui": 67.0, "uf": 67.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "melteccomunicaciones", "ii": 363.0, "if_": 282.0, "vi": -0.2231, "ui": 90.0, "uf": 87.0, "vu": -0.0333, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["caida_instancias_moderada"]}, {"t": "grupomap", "ii": 5035.0, "if_": 5696.0, "vi": 0.1313, "ui": 91.0, "uf": 91.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "test_flokzu", "ii": 14622.0, "if_": 15799.0, "vi": 0.0805, "ui": 112.0, "uf": 112.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "fundacionteleton", "ii": 76.0, "if_": 86.0, "vi": 0.1316, "ui": 135.0, "uf": 135.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "zycus", "ii": 139.0, "if_": 186.0, "vi": 0.3381, "ui": 137.0, "uf": 138.0, "vu": 0.0073, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "asegurancon", "ii": 5025.0, "if_": 5698.0, "vi": 0.1339, "ui": 138.0, "uf": 131.0, "vu": -0.0507, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "planrombo-co", "ii": 156.0, "if_": 776.0, "vi": 3.9744, "ui": 144.0, "uf": 165.0, "vu": 0.1458, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "bancodelta", "ii": 2636.0, "if_": 2467.0, "vi": -0.0641, "ui": 146.0, "uf": 147.0, "vu": 0.0068, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "tannerbancodigital", "ii": 5131.0, "if_": 5567.0, "vi": 0.085, "ui": 146.0, "uf": 136.0, "vu": -0.0685, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "elmejorsrl", "ii": 1749.0, "if_": 2015.0, "vi": 0.1521, "ui": 151.0, "uf": 135.0, "vu": -0.106, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["caida_usuarios_moderada"]}, {"t": "hospitalbritanico", "ii": 64.0, "if_": 41.0, "vi": -0.3594, "ui": 174.0, "uf": 174.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "bancocuscatlan", "ii": 1936.0, "if_": 2331.0, "vi": 0.204, "ui": 175.0, "uf": 173.0, "vu": -0.0114, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "bidfoodchile", "ii": 1686.0, "if_": 1463.0, "vi": -0.1323, "ui": 225.0, "uf": 227.0, "vu": 0.0089, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["caida_instancias_moderada"]}, {"t": "tanner", "ii": 11201.0, "if_": 11806.0, "vi": 0.054, "ui": 226.0, "uf": 159.0, "vu": -0.2965, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["caida_usuarios_moderada"]}, {"t": "bancodecomercio", "ii": 4108.0, "if_": 3739.0, "vi": -0.0898, "ui": 231.0, "uf": 231.0, "vu": 0.0, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "emv", "ii": 9976.0, "if_": 9810.0, "vi": -0.0166, "ui": 292.0, "uf": 298.0, "vu": 0.0205, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "ledger", "ii": 5.0, "if_": 9.0, "vi": 0.8, "ui": 359.0, "uf": 359.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "mcmaster-carr", "ii": 676.0, "if_": 610.0, "vi": -0.0976, "ui": 364.0, "uf": 364.0, "vu": 0.0, "ll": "2026-08-31", "dh": 3, "s": "Bien", "r": ["estable"]}, {"t": "colliersbrasil", "ii": 529.0, "if_": 605.0, "vi": 0.1437, "ui": 377.0, "uf": 393.0, "vu": 0.0424, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "covetrusna", "ii": 282.0, "if_": 162.0, "vi": -0.4255, "ui": 419.0, "uf": 416.0, "vu": -0.0072, "ll": "2026-08-31", "dh": 3, "s": "Mal", "r": ["caida_instancias_fuerte"]}, {"t": "photronics", "ii": 699.0, "if_": 740.0, "vi": 0.0587, "ui": 458.0, "uf": 464.0, "vu": 0.0131, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}, {"t": "netpay", "ii": 316.0, "if_": 440.0, "vi": 0.3924, "ui": 943.0, "uf": 946.0, "vu": 0.0032, "ll": "2026-09-01", "dh": 2, "s": "Bien", "r": ["estable"]}];
+
+// --- Columnas configurables (además de Tenant / Salud / Motivos / Seguimiento, que son fijas) ---
+const OPTIONAL_COLUMNS = [
+  {key:'ii', label:'Instancias inicio', sort:true, render:r=> `<span class="mono">${r.ii ?? '–'}</span>`},
+  {key:'if_', label:'Instancias fin', sort:true, render:r=> `<span class="mono">${r.if_ ?? '–'}</span>`},
+  {key:'vi', label:'Var. instancias', sort:true, render:r=> fmtPct(r.vi)},
+  {key:'ui', label:'Usuarios inicio', sort:true, render:r=> `<span class="mono">${r.ui ?? '–'}</span>`},
+  {key:'uf', label:'Usuarios fin', sort:true, render:r=> `<span class="mono">${r.uf ?? '–'}</span>`},
+  {key:'vu', label:'Var. usuarios', sort:true, render:r=> fmtPct(r.vu)},
+  {key:'dh', label:'Días hábiles sin login', sort:true, render:r=> `<span class="mono">${r.dh}</span>`},
+];
+const DEFAULT_VISIBLE = ['if_','vi','uf','vu','dh'];
+let visibleCols = new Set(DEFAULT_VISIBLE);
+
+const REASON_META = {
+  sin_actividad_instancias: {label:'Sin actividad de instancias', color:'#d63c72', desc:'Terminó el período con cero instancias generadas (sin importar cómo empezó).'},
+  caida_instancias_fuerte:  {label:'Caída fuerte de instancias (>30%)', color:'#d63c72', desc:'El volumen de instancias bajó más del 30% (o cayó a cero).'},
+  caida_instancias_moderada:{label:'Caída moderada de instancias (10–30%)', color:'#c07f0e', desc:'El volumen de instancias bajó entre 10% y 30%.'},
+  caida_usuarios_fuerte:    {label:'Caída fuerte de usuarios (>30%)', color:'#b0246a', desc:'La cantidad de usuarios activos bajó más del 30%.'},
+  caida_usuarios_moderada:  {label:'Caída moderada de usuarios (10–30%)', color:'#b8860b', desc:'La cantidad de usuarios activos bajó entre 10% y 30%.'},
+  login_atrasado:           {label:'Login atrasado (>5 días hábiles)', color:'#7c4dff', desc:'Pasaron más de 5 días hábiles desde el último acceso.'},
+  estable:                  {label:'Todo estable', color:'#1f9d68', desc:'Sin caídas relevantes de instancias o usuarios, y login reciente.'}
+};
+
+const MSG_TEMPLATES = {
+  sin_actividad_instancias: (t)=>`Hola equipo de ${t},\n\nVimos que la cuenta no registra instancias generadas en ninguno de los dos períodos medidos. Queríamos saber si están teniendo alguna dificultad con el uso de Flokzu o si necesitan apoyo para retomar los procesos cargados. ¿Coordinamos una llamada corta esta semana?\n\nSaludos,\nClient Solutions - Flokzu`,
+  caida_instancias_fuerte: (t)=>`Hola equipo de ${t},\n\nVemos una caída importante en el volumen de instancias respecto al período anterior. Queríamos consultarles si todo está funcionando correctamente y si hay algo que podamos revisar juntos para acompañar el uso.\n\nSaludos,\nClient Solutions - Flokzu`,
+  caida_instancias_moderada: (t)=>`Hola equipo de ${t},\n\nNotamos una baja moderada en el volumen de instancias. Nada alarmante, pero queríamos hacer un check-in rápido para ver si podemos ayudar en algo o si hay procesos nuevos que les gustaría automatizar.\n\nSaludos,\nClient Solutions - Flokzu`,
+  caida_usuarios_fuerte: (t)=>`Hola equipo de ${t},\n\nVemos que la cantidad de usuarios activos bajó de forma importante respecto al período anterior. ¿Hubo algún cambio de equipo o de proceso interno? Nos gustaría entender qué pasó y ver cómo podemos ayudar a que el equipo vuelva a usar la herramienta.\n\nSaludos,\nClient Solutions - Flokzu`,
+  caida_usuarios_moderada: (t)=>`Hola equipo de ${t},\n\nNotamos una baja moderada en la cantidad de usuarios activos. Queríamos hacer un check-in para saber si hay algo en lo que podamos ayudar o algún cambio de equipo que debamos tener en cuenta.\n\nSaludos,\nClient Solutions - Flokzu`,
+  login_atrasado: (t)=>`Hola equipo de ${t},\n\nNotamos que no hay accesos recientes a la plataforma (más de 5 días hábiles). ¿Está todo en orden con la cuenta? Quedamos a disposición para una sesión de refuerzo o para resolver cualquier bloqueo que estén teniendo.\n\nSaludos,\nClient Solutions - Flokzu`,
+  estable: (t)=>`Hola equipo de ${t},\n\nQueríamos hacer un check-in de rutina. El uso se ve estable, así que nos gustaría charlar sobre cómo está siendo la experiencia general con Flokzu y si hay algo en lo que podamos ayudar.\n\nSaludos,\nClient Solutions - Flokzu`
+};
+
+let followUps = {}; // tenant -> {status, fecha}
+let currentSalud = 'Todos';
+let currentReason = null;
+let searchTerm = '';
+let sortKey = 'dh';
+let sortDir = -1;
+let activeTenant = null;
+
+async function loadFollowUps(){
+  for(const rec of RAW){
+    try{
+      const res = await window.storage.get('seguimiento:'+rec.t, false);
+      if(res && res.value){ followUps[rec.t] = JSON.parse(res.value); }
+    }catch(e){ /* no entry yet */ }
+  }
+}
+
+async function loadColumnPrefs(){
+  try{
+    const res = await window.storage.get('columnas_visibles', false);
+    if(res && res.value){
+      const arr = JSON.parse(res.value);
+      if(Array.isArray(arr) && arr.length){ visibleCols = new Set(arr); }
+    }
+  }catch(e){ /* usa default */ }
+}
+
+async function saveColumnPrefs(){
+  try{ await window.storage.set('columnas_visibles', JSON.stringify([...visibleCols]), false); }catch(e){}
+}
+
+function fmtPct(v){
+  if(v===null || v===undefined) return '<span class="var-na">s/d</span>';
+  const pct = (v*100).toFixed(1)+'%';
+  return `<span class="mono ${v>=0?'var-pos':'var-neg'}">${v>=0?'+':''}${pct}</span>`;
+}
+
+function renderKPIs(){
+  const total = RAW.length;
+  const bien = RAW.filter(r=>r.s==='Bien').length;
+  const cuidado = RAW.filter(r=>r.s==='Cuidado').length;
+  const mal = RAW.filter(r=>r.s==='Mal').length;
+  document.getElementById('metaTotal').textContent = total;
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiBien').textContent = bien;
+  document.getElementById('kpiCuidado').textContent = cuidado;
+  document.getElementById('kpiMal').textContent = mal;
+  document.getElementById('kpiBienPct').textContent = (bien/total*100).toFixed(0)+'% del total';
+  document.getElementById('kpiCuidadoPct').textContent = (cuidado/total*100).toFixed(0)+'% del total';
+  document.getElementById('kpiMalPct').textContent = (mal/total*100).toFixed(0)+'% del total';
+
+  new Chart(document.getElementById('donutChart'), {
+    type:'doughnut',
+    data:{
+      labels:['Bien','Cuidado','Mal'],
+      datasets:[{data:[bien,cuidado,mal], backgroundColor:['#1f9d68','#c07f0e','#d63c72'], borderColor:'#ffffff', borderWidth:3}]
+    },
+    options:{
+      plugins:{legend:{position:'bottom', labels:{color:'#847d9c', font:{size:11}, padding:14}}},
+      cutout:'68%'
+    }
+  });
+}
+
+function renderReasonLegend(){
+  const mal = RAW.filter(r=>r.s==='Mal');
+  const counts = {};
+  Object.keys(REASON_META).forEach(k=>{ if(k!=='estable') counts[k]=0; });
+  mal.forEach(r=>r.r.forEach(x=>{ if(x!=='estable') counts[x]=(counts[x]||0)+1; }));
+  const el = document.getElementById('reasonLegend');
+  el.innerHTML = '';
+  Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([k,v])=>{
+    const div = document.createElement('div');
+    div.className = 'reason-chip';
+    div.dataset.reason = k;
+    div.innerHTML = `<div class="rc-count" style="color:${REASON_META[k].color}">${v}</div><div class="rc-label">${REASON_META[k].label}</div>`;
+    div.onclick = ()=>{
+      currentReason = (currentReason===k) ? null : k;
+      currentSalud = 'Mal';
+      document.querySelectorAll('#segSalud button').forEach(b=>b.classList.toggle('active', b.dataset.v==='Mal'));
+      document.querySelectorAll('.reason-chip').forEach(c=>c.classList.toggle('active', c.dataset.reason===currentReason));
+      renderTable();
+    };
+    el.appendChild(div);
+  });
+}
+
+function renderColumnPicker(){
+  const list = document.getElementById('colPickerList');
+  list.innerHTML = OPTIONAL_COLUMNS.map(c=>`
+    <label class="col-picker-item">
+      <input type="checkbox" data-col="${c.key}" ${visibleCols.has(c.key)?'checked':''}>
+      ${c.label}
+    </label>
+  `).join('');
+  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.onchange = ()=>{
+      if(cb.checked) visibleCols.add(cb.dataset.col); else visibleCols.delete(cb.dataset.col);
+      saveColumnPrefs();
+      renderTable();
+    };
+  });
+}
+
+document.getElementById('colPickerBtn').onclick = (e)=>{
+  e.stopPropagation();
+  document.getElementById('colPickerPanel').classList.toggle('open');
+};
+document.addEventListener('click', (e)=>{
+  const panel = document.getElementById('colPickerPanel');
+  if(panel.classList.contains('open') && !panel.contains(e.target) && e.target.id!=='colPickerBtn'){
+    panel.classList.remove('open');
+  }
+});
+
+function activeOptionalColumns(){
+  return OPTIONAL_COLUMNS.filter(c=>visibleCols.has(c.key));
+}
+
+function renderHead(){
+  const cols = activeOptionalColumns();
+  const thead = document.getElementById('thead');
+  thead.innerHTML = `<tr>
+    <th data-k="t">Tenant</th>
+    <th data-k="s">Salud</th>
+    ${cols.map(c=>`<th data-k="${c.key}">${c.label}</th>`).join('')}
+    <th>Motivos</th>
+    <th>Seguimiento</th>
+  </tr>`;
+  thead.querySelectorAll('th[data-k]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.dataset.k;
+      if(sortKey===k) sortDir *= -1; else { sortKey = k; sortDir = -1; }
+      renderTable();
+    });
+  });
+}
+
+function getFiltered(){
+  let rows = RAW.slice();
+  if(currentSalud!=='Todos') rows = rows.filter(r=>r.s===currentSalud);
+  if(currentReason) rows = rows.filter(r=>r.r.includes(currentReason));
+  if(searchTerm) rows = rows.filter(r=>r.t.toLowerCase().includes(searchTerm.toLowerCase()));
+  rows.sort((a,b)=>{
+    let av=a[sortKey], bv=b[sortKey];
+    if(av===null||av===undefined) av = sortDir===1? Infinity: -Infinity;
+    if(bv===null||bv===undefined) bv = sortDir===1? Infinity: -Infinity;
+    if(typeof av==='string') return sortDir*av.localeCompare(bv);
+    return sortDir*(av-bv);
+  });
+  return rows;
+}
+
+function rowsToHtml(rows){
+  const cols = activeOptionalColumns();
+  return rows.map(r=>{
+    const tags = r.r.map(x=>`<span class="tag" style="color:${REASON_META[x].color};border-color:${REASON_META[x].color}44">${REASON_META[x].label}</span>`).join('');
+    const fu = followUps[r.t];
+    const contacted = fu && fu.status==='contactado';
+    return `<tr>
+      <td class="tenant-name">${r.t}</td>
+      <td><span class="badge ${r.s}">${r.s}</span></td>
+      ${cols.map(c=>`<td>${c.render(r)}</td>`).join('')}
+      <td class="motivos-cell">${tags}</td>
+      <td class="seguimiento-cell"><button class="contact-btn ${contacted?'done':''}" data-tenant="${r.t}">${contacted?'✓ Contactado':'Ver / contactar'}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTable(){
+  renderHead();
+  const rows = getFiltered();
+  document.getElementById('rowCount').textContent = rows.length + ' de ' + RAW.length;
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = rowsToHtml(rows);
+  tbody.querySelectorAll('button.contact-btn').forEach(btn=>{
+    btn.onclick = ()=>openModal(btn.dataset.tenant);
+  });
+}
+
+function openModal(tenant){
+  activeTenant = tenant;
+  const r = RAW.find(x=>x.t===tenant);
+  document.getElementById('modalTitle').textContent = tenant;
+  document.getElementById('modalSub').innerHTML = `Salud actual: <span class="badge ${r.s}">${r.s}</span>`;
+  document.getElementById('modalDetail').innerHTML = `
+    <div class="detail-item"><div class="di-label">Instancias inicio → fin</div><div class="di-value">${r.ii ?? '–'} → ${r.if_ ?? '–'}</div></div>
+    <div class="detail-item"><div class="di-label">Var. instancias</div><div class="di-value">${fmtPct(r.vi)}</div></div>
+    <div class="detail-item"><div class="di-label">Usuarios inicio → fin</div><div class="di-value">${r.ui ?? '–'} → ${r.uf ?? '–'}</div></div>
+    <div class="detail-item"><div class="di-label">Var. usuarios</div><div class="di-value">${fmtPct(r.vu)}</div></div>
+    <div class="detail-item"><div class="di-label">Último login</div><div class="di-value">${r.ll}</div></div>
+    <div class="detail-item"><div class="di-label">Días hábiles sin login</div><div class="di-value">${r.dh}</div></div>
+  `;
+  const primaryReason = r.r[0];
+  const msg = MSG_TEMPLATES[primaryReason] ? MSG_TEMPLATES[primaryReason](tenant) : '';
+  document.getElementById('modalMsg').value = msg;
+  const fu = followUps[tenant];
+  document.getElementById('markDoneBtn').textContent = (fu && fu.status==='contactado') ? '✓ Ya contactado' : 'Marcar como contactado';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+document.getElementById('modalClose').onclick = ()=>document.getElementById('modalOverlay').classList.remove('open');
+document.getElementById('modalOverlay').onclick = (e)=>{ if(e.target.id==='modalOverlay') e.currentTarget.classList.remove('open'); };
+
+document.getElementById('copyMsgBtn').onclick = async ()=>{
+  const ta = document.getElementById('modalMsg');
+  ta.select();
+  try{ await navigator.clipboard.writeText(ta.value); }catch(e){}
+  const btn = document.getElementById('copyMsgBtn');
+  const orig = btn.textContent;
+  btn.textContent = 'Copiado ✓';
+  setTimeout(()=>btn.textContent=orig, 1500);
+};
+
+document.getElementById('markDoneBtn').onclick = async ()=>{
+  if(!activeTenant) return;
+  const record = {status:'contactado', fecha: new Date().toISOString().slice(0,10)};
+  followUps[activeTenant] = record;
+  try{
+    await window.storage.set('seguimiento:'+activeTenant, JSON.stringify(record), false);
+  }catch(e){ console.error('No se pudo guardar', e); }
+  document.getElementById('markDoneBtn').textContent = '✓ Ya contactado';
+  renderTable();
+};
+
+document.getElementById('segSalud').addEventListener('click', (e)=>{
+  if(e.target.tagName!=='BUTTON') return;
+  currentSalud = e.target.dataset.v;
+  currentReason = null;
+  document.querySelectorAll('#segSalud button').forEach(b=>b.classList.toggle('active', b===e.target));
+  document.querySelectorAll('.reason-chip').forEach(c=>c.classList.remove('active'));
+  renderTable();
+});
+
+document.getElementById('searchBox').addEventListener('input', (e)=>{
+  searchTerm = e.target.value;
+  renderTable();
+});
+
+document.getElementById('pendingBtn').onclick = ()=>{
+  currentSalud = 'Mal';
+  currentReason = null;
+  searchTerm = '';
+  document.getElementById('searchBox').value = '';
+  document.querySelectorAll('#segSalud button').forEach(b=>b.classList.toggle('active', b.dataset.v==='Mal'));
+  document.querySelectorAll('.reason-chip').forEach(c=>c.classList.remove('active'));
+  renderHead();
+  let rows = RAW.filter(r=>r.s==='Mal' && !(followUps[r.t] && followUps[r.t].status==='contactado'));
+  rows.sort((a,b)=>b.dh-a.dh);
+  document.getElementById('rowCount').textContent = rows.length + ' pendientes de contactar';
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = rowsToHtml(rows);
+  tbody.querySelectorAll('button.contact-btn').forEach(btn=>{ btn.onclick = ()=>openModal(btn.dataset.tenant); });
+};
+
+document.getElementById('exportBtn').onclick = ()=>{
+  const rows = getFiltered();
+  const cols = activeOptionalColumns();
+  let csv = 'Tenant,Salud,' + cols.map(c=>c.label).join(',') + ',Motivos,Contactado\n';
+  rows.forEach(r=>{
+    const fu = followUps[r.t];
+    const contacted = (fu && fu.status==='contactado') ? 'Si ('+fu.fecha+')' : 'No';
+    const motivos = r.r.map(x=>REASON_META[x].label).join(' | ');
+    const vals = cols.map(c=>{
+      const v = r[c.key];
+      if(v===null || v===undefined) return '';
+      if(c.key==='vi' || c.key==='vu') return (v*100).toFixed(1)+'%';
+      return v;
+    });
+    csv += `"${r.t}","${r.s}",${vals.join(',')},"${motivos}","${contacted}"\n`;
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'salud_clientes_export.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+(async function init(){
+  await loadFollowUps();
+  await loadColumnPrefs();
+  renderKPIs();
+  renderReasonLegend();
+  renderColumnPicker();
+  renderTable();
+})();
+</script>
+</body>
+</html>
